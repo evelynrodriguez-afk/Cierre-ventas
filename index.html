@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cierre de Venta Diaria</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#fffdf8; --border:#e6dfce; --ink:#2a2a28; --muted:#7a7568;
+    --gold:#a08850; --ok:#1f7a4d; --okbg:#e3f5ec; --okdot:#2faf6f;
+    --warn:#9a6a00; --warnbg:#fdf4e0; --warndot:#e0a020;
+    --alert:#a23b3b; --alertbg:#fbe9e9; --alertdot:#d05757;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--ink);
+    padding:32px clamp(16px,5vw,56px);max-width:1100px;margin:0 auto;line-height:1.4}
+  .kicker{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);font-weight:500}
+  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+  h1{font-family:'Fraunces',serif;font-size:clamp(28px,4vw,42px);font-weight:600;margin-top:6px;line-height:1.05}
+  .tasa-wrap{text-align:right}
+  .tasa-num{font-family:'Fraunces',serif;font-size:44px;font-weight:600;color:var(--ok);line-height:1}
+  .tasa-lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+  .kpi-label{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .kpi-value{font-family:'Fraunces',serif;font-size:32px;font-weight:600;line-height:1}
+  .kpi-sub{font-size:12.5px;color:#9a9486;margin-top:6px}
+  .t-neutral{color:#3a3a3a}.t-ok{color:var(--ok)}.t-alert{color:var(--alert)}.t-warn{color:var(--warn)}
+  .bar{height:8px;background:var(--border);border-radius:8px;overflow:hidden;margin-bottom:26px}
+  .bar-fill{height:100%;background:linear-gradient(90deg,#2faf6f,#1f7a4d);border-radius:8px;transition:width .4s ease}
+  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .filtro{border:1px solid #d8d0bd;background:var(--card);color:#5a5648;padding:7px 16px;
+    border-radius:20px;font-size:13.5px;cursor:pointer;font-family:inherit;transition:.15s}
+  .filtro.activo{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tabla{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .grid-row{display:grid;grid-template-columns:1fr 2fr 1.1fr 1.1fr 1.2fr .5fr;gap:12px;align-items:center}
+  .thead{padding:14px 22px;font-size:11.5px;text-transform:uppercase;letter-spacing:1px;
+    color:#a09a8a;border-bottom:1px solid #ece5d6;font-weight:600}
+  .fila{padding:16px 22px;border-bottom:1px solid #f1ebdd;font-size:14.5px;transition:background .15s;cursor:pointer}
+  .fila:hover{background:#faf7f0}
+  .op-id{font-family:'Fraunces',serif;font-weight:600;color:#7a5c00}
+  .cliente{font-weight:500}.monto{font-variant-numeric:tabular-nums}.vendedor{color:#6a6558}
+  .seg-cell{text-align:center;font-variant-numeric:tabular-nums}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:12.5px;font-weight:500}
+  .dot{width:7px;height:7px;border-radius:50%}
+  /* panel */
+  .overlay{position:fixed;inset:0;background:rgba(30,26,18,.4);backdrop-filter:blur(3px);
+    display:none;justify-content:flex-end;z-index:50}
+  .overlay.open{display:flex}
+  .panel{width:min(460px,100%);height:100%;background:var(--bg);padding:32px 30px;
+    overflow-y:auto;box-shadow:-20px 0 60px rgba(0,0,0,.2);position:relative}
+  .cerrar{position:absolute;top:22px;right:22px;border:none;background:var(--border);
+    width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px}
+  .panel h2{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:6px 0 4px}
+  .panel-meta{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .field-label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1px;
+    color:#a09a8a;font-weight:600;margin:18px 0 8px}
+  .estado-btns{display:flex;gap:8px}
+  .estado-btn{flex:1;padding:9px 0;border-radius:10px;border:1px solid #d8d0bd;background:var(--card);
+    color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s}
+  textarea,input{width:100%;border:1px solid #d8d0bd;border-radius:10px;padding:12px;
+    font-family:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+  textarea{min-height:64px;resize:vertical}
+  input:focus,textarea:focus{outline:2px solid #d4a017;border-color:transparent}
+  .divider{height:1px;background:#e0d8c6;margin:26px 0 18px}
+  .acciones-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:14px}
+  .vacio{color:#9a9486;font-size:14px;font-style:italic;margin-bottom:8px}
+  .accion-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+  .accion-top{display:flex;justify-content:space-between;margin-bottom:6px}
+  .acc-badge{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .acc-resp{font-size:13px;color:#6a6558}
+  .acc-desc{font-size:14.5px;margin-bottom:10px;font-weight:500}
+  .acc-fechas{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#6a6558;margin-bottom:10px}
+  .acc-btns{display:flex;gap:8px}
+  .mini-btn{flex:1;padding:7px 0;border:none;background:var(--ok);color:#fff;border-radius:8px;
+    font-size:12.5px;cursor:pointer;font-family:inherit}
+  .mini-btn.alt{background:var(--border);color:#5a5648}
+  .nueva-accion{background:#efe9db;border-radius:12px;padding:16px;margin-top:18px}
+  .nueva-accion input{margin-bottom:8px}
+  .add-btn{width:100%;padding:11px 0;border:none;background:var(--ink);color:var(--bg);
+    border-radius:9px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+  .add-btn:disabled{opacity:.4;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="kicker">Seguimiento de facturación · <span id="hoy"></span></div>
+    <h1>Cierre de Venta Diaria</h1>
+  </div>
+  <div class="tasa-wrap">
+    <div class="tasa-num" id="tasa">0%</div>
+    <div class="tasa-lbl">tasa de cierre</div>
+  </div>
+</header>
+
+<section class="kpi-grid" id="kpis"></section>
+<div class="bar"><div class="bar-fill" id="barfill" style="width:0%"></div></div>
+<nav id="filtros"></nav>
+
+<section class="tabla">
+  <div class="grid-row thead">
+    <span>Operación</span><span>Cliente</span><span>Monto</span>
+    <span>Vendedor</span><span>Estado</span><span>Seg.</span>
+  </div>
+  <div id="filas"></div>
+</section>
+
+<div class="overlay" id="overlay"><aside class="panel" id="panel"></aside></div>
+
+<script>
+/* ============================================================
+   PUNTO DE INTEGRACIÓN CON TU SISTEMA DE VENTAS
+   ------------------------------------------------------------
+   Reemplaza fetchOperacionesDelDia() por una llamada a tu API:
+
+     async function fetchOperacionesDelDia(fecha){
+       const r = await fetch(`https://TU-API/ventas?fecha=${fecha}`);
+       return await r.json();   // mismo shape que OPERACIONES_DEMO
+     }
+
+   Luego: OPERACIONES = await fetchOperacionesDelDia(HOY);
+   Por ahora usa datos demo en memoria.
+   ============================================================ */
+
+const HOY = "2026-05-28";
+
+let OPERACIONES = [
+  {id:"OP-1042",cliente:"Distribuidora Andina SAC",monto:12500,vendedor:"M. Quispe",estado:"cerrada",motivoNoCierre:"",acciones:[]},
+  {id:"OP-1043",cliente:"Comercial Río Verde",monto:8400,vendedor:"L. Torres",estado:"pendiente",motivoNoCierre:"Cliente no respondió confirmación",acciones:[
+    {id:1,descripcion:"Llamar para confirmar orden",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+  {id:"OP-1044",cliente:"Inversiones del Sur",monto:23100,vendedor:"M. Quispe",estado:"en_proceso",motivoNoCierre:"Pendiente validación de crédito",acciones:[
+    {id:1,descripcion:"Enviar evaluación crediticia a riesgos",responsable:"Área Riesgos",fechaCompromiso:"2026-05-28",fechaCumplida:"2026-05-28",estado:"cumplida"},
+    {id:2,descripcion:"Reprogramar firma de contrato",responsable:"M. Quispe",fechaCompromiso:"2026-05-30",fechaCumplida:"",estado:"reprogramada"}]},
+  {id:"OP-1045",cliente:"Grupo Pacífico Retail",monto:5600,vendedor:"A. Flores",estado:"pendiente",motivoNoCierre:"Precio fuera de presupuesto",acciones:[]},
+  {id:"OP-1046",cliente:"Servicios Logísticos EIRL",monto:17800,vendedor:"A. Flores",estado:"cerrada",motivoNoCierre:"",acciones:[]},
+  {id:"OP-1047",cliente:"Textiles Unidos",monto:9950,vendedor:"L. Torres",estado:"en_proceso",motivoNoCierre:"Falta orden de compra firmada",acciones:[
+    {id:1,descripcion:"Solicitar OC firmada por correo",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+];
+
+const ESTADOS={
+  cerrada:{label:"Cerrada",color:"var(--ok)",bg:"var(--okbg)",dot:"var(--okdot)"},
+  en_proceso:{label:"En proceso",color:"var(--warn)",bg:"var(--warnbg)",dot:"var(--warndot)"},
+  pendiente:{label:"Pendiente",color:"var(--alert)",bg:"var(--alertbg)",dot:"var(--alertdot)"},
+};
+const ACCION_ESTADOS={
+  abierta:{label:"Abierta",color:"var(--alert)"},
+  cumplida:{label:"Cumplida",color:"var(--ok)"},
+  reprogramada:{label:"Reprogramada",color:"var(--warn)"},
+};
+const fmtMoney=n=>"S/ "+n.toLocaleString("es-PE");
+
+let filtro="todas", seleccion=null;
+
+const FILTROS=[["todas","Todas"],["cerrada","Cerradas"],["en_proceso","En proceso"],["pendiente","Pendientes"],["no_cerradas","Sin cerrar"]];
+
+function render(){
+  document.getElementById("hoy").textContent=HOY;
+
+  const total=OPERACIONES.length;
+  const cerradas=OPERACIONES.filter(o=>o.estado==="cerrada").length;
+  const noCerradas=total-cerradas;
+  const montoCerrado=OPERACIONES.filter(o=>o.estado==="cerrada").reduce((a,o)=>a+o.monto,0);
+  const montoRiesgo=OPERACIONES.filter(o=>o.estado!=="cerrada").reduce((a,o)=>a+o.monto,0);
+  const accAbiertas=OPERACIONES.flatMap(o=>o.acciones).filter(a=>a.estado!=="cumplida").length;
+  const tasa=total?Math.round(cerradas/total*100):0;
+
+  document.getElementById("tasa").textContent=tasa+"%";
+  document.getElementById("barfill").style.width=tasa+"%";
+
+  document.getElementById("kpis").innerHTML=[
+    ["Operaciones del día",total,"registradas","neutral"],
+    ["Cerraron venta",cerradas,fmtMoney(montoCerrado),"ok"],
+    ["Sin cerrar",noCerradas,fmtMoney(montoRiesgo)+" en riesgo","alert"],
+    ["Acciones abiertas",accAbiertas,"por ejecutar","warn"],
+  ].map(([l,v,s,t])=>`<div class="kpi"><div class="kpi-label">${l}</div>
+    <div class="kpi-value t-${t}">${v}</div><div class="kpi-sub">${s}</div></div>`).join("");
+
+  document.getElementById("filtros").innerHTML=FILTROS.map(([k,l])=>
+    `<button class="filtro ${filtro===k?"activo":""}" onclick="setFiltro('${k}')">${l}</button>`).join("");
+
+  let vis=OPERACIONES;
+  if(filtro==="no_cerradas")vis=OPERACIONES.filter(o=>o.estado!=="cerrada");
+  else if(filtro!=="todas")vis=OPERACIONES.filter(o=>o.estado===filtro);
+
+  document.getElementById("filas").innerHTML=vis.map(o=>{
+    const e=ESTADOS[o.estado];
+    const ab=o.acciones.filter(a=>a.estado!=="cumplida").length;
+    return `<div class="grid-row fila" onclick="abrir('${o.id}')">
+      <span class="op-id">${o.id}</span>
+      <span class="cliente">${o.cliente}</span>
+      <span class="monto">${fmtMoney(o.monto)}</span>
+      <span class="vendedor">${o.vendedor}</span>
+      <span><span class="badge" style="color:${e.color};background:${e.bg}">
+        <i class="dot" style="background:${e.dot}"></i>${e.label}</span></span>
+      <span class="seg-cell">${ab>0?`<b style="color:var(--alert)">${ab}</b>`:'<span style="color:#9aa">—</span>'}</span>
+    </div>`;
+  }).join("");
+}
+
+function setFiltro(k){filtro=k;render();}
+
+function abrir(id){
+  seleccion=id;
+  const o=OPERACIONES.find(x=>x.id===id);
+  const panel=document.getElementById("panel");
+  panel.innerHTML=`
+    <button class="cerrar" onclick="cerrar()">✕</button>
+    <div class="kicker">${o.id}</div>
+    <h2>${o.cliente}</h2>
+    <div class="panel-meta">${fmtMoney(o.monto)} · ${o.vendedor}</div>
+
+    <label class="field-label">Estado de la operación</label>
+    <div class="estado-btns">
+      ${Object.entries(ESTADOS).map(([k,v])=>`<button class="estado-btn"
+        style="${o.estado===k?`background:${v.bg};color:${v.color};border-color:${v.dot}`:''}"
+        onclick="setEstado('${o.id}','${k}')">${v.label}</button>`).join("")}
+    </div>
+
+    ${o.estado!=="cerrada"?`
+      <label class="field-label">Motivo de no cierre</label>
+      <textarea oninput="setMotivo('${o.id}',this.value)"
+        placeholder="Ej. cliente no respondió, falta documentación…">${o.motivoNoCierre}</textarea>`:""}
+
+    <div class="divider"></div>
+    <h3 class="acciones-title">Acciones de seguimiento</h3>
+    ${o.acciones.length===0?'<div class="vacio">Sin acciones registradas.</div>':""}
+    ${o.acciones.map(a=>{const ae=ACCION_ESTADOS[a.estado];return `
+      <div class="accion-card">
+        <div class="accion-top">
+          <span class="acc-badge" style="color:${ae.color}">${ae.label}</span>
+          <span class="acc-resp">${a.responsable}</span>
+        </div>
+        <div class="acc-desc">${a.descripcion}</div>
+        <div class="acc-fechas">
+          <span>📅 Compromiso: <b>${a.fechaCompromiso||"—"}</b></span>
+          <span>✅ Cumplida: <b>${a.fechaCumplida||"—"}</b></span>
+        </div>
+        <div class="acc-btns">
+          ${a.estado!=="cumplida"?`<button class="mini-btn" onclick="cumplir('${o.id}',${a.id})">Marcar cumplida</button>`:""}
+          <button class="mini-btn alt" onclick="reprogramar('${o.id}',${a.id})">Reprogramar</button>
+        </div>
+      </div>`;}).join("")}
+
+    <div class="nueva-accion">
+      <label class="field-label">Nueva acción</label>
+      <input id="na-desc" placeholder="Descripción de la acción" oninput="chkAdd()">
+      <input id="na-resp" placeholder="Responsable" oninput="chkAdd()">
+      <input id="na-fecha" type="date">
+      <button class="add-btn" id="na-btn" disabled onclick="addAccion('${o.id}')">+ Registrar acción</button>
+    </div>`;
+  document.getElementById("overlay").classList.add("open");
+}
+function cerrar(){seleccion=null;document.getElementById("overlay").classList.remove("open");}
+document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")cerrar();});
+
+function setEstado(id,k){OPERACIONES.find(o=>o.id===id).estado=k;render();abrir(id);}
+function setMotivo(id,v){OPERACIONES.find(o=>o.id===id).motivoNoCierre=v;}
+function cumplir(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);
+  a.estado="cumplida";a.fechaCumplida=HOY;render();abrir(id);}
+function reprogramar(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);
+  const nf=prompt("Nueva fecha compromiso (YYYY-MM-DD):",a.fechaCompromiso);
+  if(nf){a.fechaCompromiso=nf;a.estado="reprogramada";a.fechaCumplida="";render();abrir(id);}}
+function chkAdd(){const d=document.getElementById("na-desc").value,r=document.getElementById("na-resp").value;
+  document.getElementById("na-btn").disabled=!(d&&r);}
+function addAccion(id){const o=OPERACIONES.find(x=>x.id===id);
+  const desc=document.getElementById("na-desc").value,resp=document.getElementById("na-resp").value,
+    fecha=document.getElementById("na-fecha").value;
+  o.acciones.push({id:(o.acciones.at(-1)?.id||0)+1,descripcion:desc,responsable:resp,
+    fechaCompromiso:fecha,fechaCumplida:"",estado:"abierta"});
+  render();abrir(id);}
+
+render();
+</script>
+</body>
+</html>
