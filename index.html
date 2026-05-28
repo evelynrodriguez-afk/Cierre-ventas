@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cierre de Venta Diaria</title>
+<title>Flujo de Facturación · Control de Etapas y Fallas</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -11,268 +11,477 @@
     --gold:#a08850; --ok:#1f7a4d; --okbg:#e3f5ec; --okdot:#2faf6f;
     --warn:#9a6a00; --warnbg:#fdf4e0; --warndot:#e0a020;
     --alert:#a23b3b; --alertbg:#fbe9e9; --alertdot:#d05757;
+    --info:#2f5d8f; --infobg:#e6eef7;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--ink);
-    padding:32px clamp(16px,5vw,56px);max-width:1100px;margin:0 auto;line-height:1.4}
+    padding:32px clamp(16px,5vw,56px);max-width:1180px;margin:0 auto;line-height:1.4}
   .kicker{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);font-weight:500}
-  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px}
-  h1{font-family:'Fraunces',serif;font-size:clamp(28px,4vw,42px);font-weight:600;margin-top:6px;line-height:1.05}
-  .tasa-wrap{text-align:right}
-  .tasa-num{font-family:'Fraunces',serif;font-size:44px;font-weight:600;color:var(--ok);line-height:1}
-  .tasa-lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;flex-wrap:wrap;gap:16px}
+  h1{font-family:'Fraunces',serif;font-size:clamp(26px,4vw,40px);font-weight:600;margin-top:6px;line-height:1.05}
+  .tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--border)}
+  .tab{border:none;background:none;padding:12px 18px;font-size:15px;cursor:pointer;color:var(--muted);
+    font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s}
+  .tab.activo{color:var(--ink);border-bottom-color:var(--gold);font-weight:600}
+  .view{display:none} .view.activo{display:block}
+
+  /* ===== embudo de etapas ===== */
+  .embudo{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:28px}
+  .etapa-col{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;position:relative;cursor:pointer;transition:.15s}
+  .etapa-col:hover{border-color:var(--gold)}
+  .etapa-col.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+  .etapa-n{font-size:10.5px;color:var(--gold);font-weight:600}
+  .etapa-nom{font-size:12px;font-weight:500;margin:6px 0 10px;min-height:30px;display:flex;align-items:center;justify-content:center}
+  .etapa-count{font-family:'Fraunces',serif;font-size:26px;font-weight:600}
+  .etapa-fallas{font-size:11px;margin-top:4px}
+  .etapa-fallas.has{color:var(--alert);font-weight:600}
+  .etapa-fallas.no{color:#b8b2a4}
+
+  /* ===== KPIs ===== */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
   .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
   .kpi-label{font-size:12px;color:var(--muted);margin-bottom:8px}
-  .kpi-value{font-family:'Fraunces',serif;font-size:32px;font-weight:600;line-height:1}
+  .kpi-value{font-family:'Fraunces',serif;font-size:30px;font-weight:600;line-height:1}
   .kpi-sub{font-size:12.5px;color:#9a9486;margin-top:6px}
-  .t-neutral{color:#3a3a3a}.t-ok{color:var(--ok)}.t-alert{color:var(--alert)}.t-warn{color:var(--warn)}
-  .bar{height:8px;background:var(--border);border-radius:8px;overflow:hidden;margin-bottom:26px}
-  .bar-fill{height:100%;background:linear-gradient(90deg,#2faf6f,#1f7a4d);border-radius:8px;transition:width .4s ease}
-  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  .filtro{border:1px solid #d8d0bd;background:var(--card);color:#5a5648;padding:7px 16px;
-    border-radius:20px;font-size:13.5px;cursor:pointer;font-family:inherit;transition:.15s}
-  .filtro.activo{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .t-ok{color:var(--ok)}.t-alert{color:var(--alert)}.t-warn{color:var(--warn)}.t-neutral{color:#3a3a3a}.t-info{color:var(--info)}
+
+  /* ===== tabla ===== */
   .tabla{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-  .grid-row{display:grid;grid-template-columns:1fr 2fr 1.1fr 1.1fr 1.2fr .5fr;gap:12px;align-items:center}
-  .thead{padding:14px 22px;font-size:11.5px;text-transform:uppercase;letter-spacing:1px;
-    color:#a09a8a;border-bottom:1px solid #ece5d6;font-weight:600}
-  .fila{padding:16px 22px;border-bottom:1px solid #f1ebdd;font-size:14.5px;transition:background .15s;cursor:pointer}
+  .grid-row{display:grid;grid-template-columns:.9fr 1.8fr 1fr 1.4fr 1fr .6fr;gap:12px;align-items:center}
+  .thead{padding:14px 22px;font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:#a09a8a;border-bottom:1px solid #ece5d6;font-weight:600}
+  .fila{padding:15px 22px;border-bottom:1px solid #f1ebdd;font-size:14px;transition:background .15s;cursor:pointer}
   .fila:hover{background:#faf7f0}
   .op-id{font-family:'Fraunces',serif;font-weight:600;color:#7a5c00}
-  .cliente{font-weight:500}.monto{font-variant-numeric:tabular-nums}.vendedor{color:#6a6558}
-  .seg-cell{text-align:center;font-variant-numeric:tabular-nums}
-  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:12.5px;font-weight:500}
+  .cliente{font-weight:500}.monto{font-variant-numeric:tabular-nums}.vendedor{color:#6a6558;font-size:13px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
   .dot{width:7px;height:7px;border-radius:50%}
-  /* panel */
-  .overlay{position:fixed;inset:0;background:rgba(30,26,18,.4);backdrop-filter:blur(3px);
-    display:none;justify-content:flex-end;z-index:50}
+  .falla-pin{text-align:center}
+  .pin{display:inline-block;background:var(--alertbg);color:var(--alert);font-weight:600;font-size:12px;padding:2px 8px;border-radius:20px}
+  .filtro-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .filtro{border:1px solid #d8d0bd;background:var(--card);color:#5a5648;padding:7px 15px;border-radius:20px;font-size:13px;cursor:pointer;font-family:inherit}
+  .filtro.activo{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+  /* ===== panel detalle ===== */
+  .overlay{position:fixed;inset:0;background:rgba(30,26,18,.4);backdrop-filter:blur(3px);display:none;justify-content:flex-end;z-index:50}
   .overlay.open{display:flex}
-  .panel{width:min(460px,100%);height:100%;background:var(--bg);padding:32px 30px;
-    overflow-y:auto;box-shadow:-20px 0 60px rgba(0,0,0,.2);position:relative}
-  .cerrar{position:absolute;top:22px;right:22px;border:none;background:var(--border);
-    width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px}
-  .panel h2{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:6px 0 4px}
-  .panel-meta{color:var(--muted);font-size:14px;margin-bottom:22px}
-  .field-label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1px;
-    color:#a09a8a;font-weight:600;margin:18px 0 8px}
-  .estado-btns{display:flex;gap:8px}
-  .estado-btn{flex:1;padding:9px 0;border-radius:10px;border:1px solid #d8d0bd;background:var(--card);
-    color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s}
-  textarea,input{width:100%;border:1px solid #d8d0bd;border-radius:10px;padding:12px;
-    font-family:inherit;font-size:14px;background:var(--card);color:var(--ink)}
-  textarea{min-height:64px;resize:vertical}
-  input:focus,textarea:focus{outline:2px solid #d4a017;border-color:transparent}
-  .divider{height:1px;background:#e0d8c6;margin:26px 0 18px}
-  .acciones-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:14px}
-  .vacio{color:#9a9486;font-size:14px;font-style:italic;margin-bottom:8px}
-  .accion-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+  .panel{width:min(520px,100%);height:100%;background:var(--bg);padding:30px 28px;overflow-y:auto;box-shadow:-20px 0 60px rgba(0,0,0,.2);position:relative}
+  .cerrar{position:absolute;top:20px;right:20px;border:none;background:var(--border);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px}
+  .panel h2{font-family:'Fraunces',serif;font-size:24px;font-weight:600;margin:6px 0 4px}
+  .panel-meta{color:var(--muted);font-size:14px;margin-bottom:8px}
+  .ficha-secc{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:24px 0 12px}
+
+  /* timeline */
+  .tl-step{display:flex;gap:12px;position:relative;padding-bottom:14px}
+  .tl-step:not(:last-child)::before{content:"";position:absolute;left:9px;top:22px;bottom:0;width:2px;background:var(--border)}
+  .tl-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;z-index:1}
+  .tl-done{background:var(--okdot)} .tl-current{background:var(--warndot)} .tl-fail{background:var(--alertdot)} .tl-pending{background:#cfc8b8}
+  .tl-body{flex:1}
+  .tl-nom{font-size:14px;font-weight:500}
+  .tl-fecha{font-size:12px;color:var(--muted)}
+  .tl-falla{font-size:12.5px;color:var(--alert);background:var(--alertbg);padding:6px 10px;border-radius:8px;margin-top:6px}
+
+  /* fallas list */
+  .falla-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--alertdot);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .falla-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .falla-causa{font-size:14px;font-weight:500}
+  .falla-etapa{font-size:12px;color:var(--info);margin-top:3px}
+
+  /* acciones */
+  .accion-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}
   .accion-top{display:flex;justify-content:space-between;margin-bottom:6px}
-  .acc-badge{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-  .acc-resp{font-size:13px;color:#6a6558}
-  .acc-desc{font-size:14.5px;margin-bottom:10px;font-weight:500}
-  .acc-fechas{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#6a6558;margin-bottom:10px}
+  .acc-badge{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .acc-resp{font-size:12.5px;color:#6a6558}
+  .acc-desc{font-size:14px;margin-bottom:8px;font-weight:500}
+  .acc-fechas{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:#6a6558;margin-bottom:8px}
   .acc-btns{display:flex;gap:8px}
-  .mini-btn{flex:1;padding:7px 0;border:none;background:var(--ok);color:#fff;border-radius:8px;
-    font-size:12.5px;cursor:pointer;font-family:inherit}
+  .mini-btn{flex:1;padding:7px 0;border:none;background:var(--ok);color:#fff;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit}
   .mini-btn.alt{background:var(--border);color:#5a5648}
-  .nueva-accion{background:#efe9db;border-radius:12px;padding:16px;margin-top:18px}
-  .nueva-accion input{margin-bottom:8px}
-  .add-btn{width:100%;padding:11px 0;border:none;background:var(--ink);color:var(--bg);
-    border-radius:9px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
-  .add-btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ===== análisis ===== */
+  .analisis-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  @media(max-width:760px){.analisis-grid{grid-template-columns:1fr}.embudo{grid-template-columns:repeat(2,1fr)}.grid-row{grid-template-columns:1fr 1fr;font-size:13px}}
+  .panel-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 24px}
+  .panel-card h3{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin-bottom:16px}
+  .barra-row{margin-bottom:14px}
+  .barra-top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:5px}
+  .barra-top b{font-variant-numeric:tabular-nums}
+  .barra-track{height:10px;background:var(--border);border-radius:6px;overflow:hidden}
+  .barra-fill{height:100%;border-radius:6px}
+  .reinc-tag{display:inline-block;background:var(--alertbg);color:var(--alert);font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;margin-left:6px}
+  .insight{background:var(--warnbg);border:1px solid #f0e0b8;border-radius:12px;padding:16px 18px;font-size:14px;margin-bottom:18px;line-height:1.55}
+  .insight b{color:var(--warn)}
+
+  /* ===== cierre diario ===== */
+  .tasa-banner{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .tasa-big{font-family:'Fraunces',serif;font-size:52px;font-weight:600;color:var(--ok);line-height:1}
+  .tasa-info{flex:1;min-width:200px}
+  .tasa-info .lbl{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
+  .tasa-info .txt{font-size:14px;color:var(--ink);margin-top:4px}
+  .tasa-bar{flex-basis:100%;height:10px;background:var(--alertbg);border-radius:6px;overflow:hidden;margin-top:6px}
+  .tasa-bar-fill{height:100%;background:linear-gradient(90deg,#2faf6f,#1f7a4d);border-radius:6px}
+  .dia-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.dia-cols{grid-template-columns:1fr}}
+  .op-mini{border:1px solid var(--border);border-radius:11px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:.15s;background:var(--bg)}
+  .op-mini:hover{border-color:var(--gold);background:#faf7f0}
+  .op-mini-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .op-mini-cli{font-weight:500;font-size:14.5px}
+  .op-mini-monto{font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+  .op-mini-sub{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .op-mini-etapa{color:var(--alert)}
+  .op-mini-acc{color:var(--info)}
+  .vacio-col{color:var(--muted);font-style:italic;font-size:14px;padding:8px 0}
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <div class="kicker">Seguimiento de facturación · <span id="hoy"></span></div>
-    <h1>Cierre de Venta Diaria</h1>
-  </div>
-  <div class="tasa-wrap">
-    <div class="tasa-num" id="tasa">0%</div>
-    <div class="tasa-lbl">tasa de cierre</div>
+    <div class="kicker">Proceso de facturación · <span id="hoy"></span></div>
+    <h1>Control de Flujo y Fallas</h1>
   </div>
 </header>
 
-<section class="kpi-grid" id="kpis"></section>
-<div class="bar"><div class="bar-fill" id="barfill" style="width:0%"></div></div>
-<nav id="filtros"></nav>
+<div class="tabs">
+  <button class="tab activo" onclick="setView('diario',this)">Cierre del Día</button>
+  <button class="tab" onclick="setView('flujo',this)">Flujo & Operaciones</button>
+  <button class="tab" onclick="setView('analisis',this)">Análisis de Fallas</button>
+</div>
 
-<section class="tabla">
-  <div class="grid-row thead">
-    <span>Operación</span><span>Cliente</span><span>Monto</span>
-    <span>Vendedor</span><span>Estado</span><span>Seg.</span>
+<!-- ============ VISTA CIERRE DEL DÍA ============ -->
+<div class="view activo" id="view-diario">
+  <div class="tasa-banner" id="tasa-banner"></div>
+  <div class="kpi-grid" id="dia-kpis"></div>
+  <div class="dia-cols">
+    <div class="panel-card">
+      <h3 style="color:var(--ok)">✓ Cerraron venta hoy</h3>
+      <div id="dia-cerradas"></div>
+    </div>
+    <div class="panel-card">
+      <h3 style="color:var(--alert)">✕ No cerraron — requieren seguimiento</h3>
+      <div id="dia-pendientes"></div>
+    </div>
   </div>
-  <div id="filas"></div>
-</section>
+</div>
+
+<!-- ============ VISTA FLUJO ============ -->
+<div class="view" id="view-flujo">
+  <div class="embudo" id="embudo"></div>
+  <div class="filtro-bar" id="filtros"></div>
+  <div class="tabla">
+    <div class="grid-row thead">
+      <span>Operación</span><span>Cliente</span><span>Monto</span>
+      <span>Etapa actual</span><span>Estado</span><span>Fallas</span>
+    </div>
+    <div id="filas"></div>
+  </div>
+</div>
+
+<!-- ============ VISTA ANÁLISIS ============ -->
+<div class="view" id="view-analisis">
+  <div class="kpi-grid" id="ana-kpis"></div>
+  <div class="insight" id="insight"></div>
+  <div class="analisis-grid">
+    <div class="panel-card"><h3>① Reincidencia por etapa</h3><div id="reinc-etapa"></div></div>
+    <div class="panel-card"><h3>② Reincidencia por causa</h3><div id="reinc-causa"></div></div>
+  </div>
+  <div class="panel-card"><h3>③ Reincidencia por cliente / operación</h3><div id="reinc-cliente"></div></div>
+</div>
 
 <div class="overlay" id="overlay"><aside class="panel" id="panel"></aside></div>
 
 <script>
 /* ============================================================
-   PUNTO DE INTEGRACIÓN CON TU SISTEMA DE VENTAS
+   PUNTO DE INTEGRACIÓN CON TU SISTEMA DE VENTAS / FACTURACIÓN
    ------------------------------------------------------------
-   Reemplaza fetchOperacionesDelDia() por una llamada a tu API:
-
-     async function fetchOperacionesDelDia(fecha){
-       const r = await fetch(`https://TU-API/ventas?fecha=${fecha}`);
-       return await r.json();   // mismo shape que OPERACIONES_DEMO
-     }
-
-   Luego: OPERACIONES = await fetchOperacionesDelDia(HOY);
-   Por ahora usa datos demo en memoria.
+   Reemplaza los datos demo por tu API. El shape esperado:
+   - cada operación tiene etapaActual (índice 0..6), estado,
+     timeline[] (una entrada por etapa con fecha y falla opcional),
+     fallas[] (historial), acciones[] (seguimiento).
    ============================================================ */
 
-const HOY = "2026-05-28";
+const HOY="2026-05-28";
 
-let OPERACIONES = [
-  {id:"OP-1042",cliente:"Distribuidora Andina SAC",monto:12500,vendedor:"M. Quispe",estado:"cerrada",motivoNoCierre:"",acciones:[]},
-  {id:"OP-1043",cliente:"Comercial Río Verde",monto:8400,vendedor:"L. Torres",estado:"pendiente",motivoNoCierre:"Cliente no respondió confirmación",acciones:[
-    {id:1,descripcion:"Llamar para confirmar orden",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
-  {id:"OP-1044",cliente:"Inversiones del Sur",monto:23100,vendedor:"M. Quispe",estado:"en_proceso",motivoNoCierre:"Pendiente validación de crédito",acciones:[
-    {id:1,descripcion:"Enviar evaluación crediticia a riesgos",responsable:"Área Riesgos",fechaCompromiso:"2026-05-28",fechaCumplida:"2026-05-28",estado:"cumplida"},
-    {id:2,descripcion:"Reprogramar firma de contrato",responsable:"M. Quispe",fechaCompromiso:"2026-05-30",fechaCumplida:"",estado:"reprogramada"}]},
-  {id:"OP-1045",cliente:"Grupo Pacífico Retail",monto:5600,vendedor:"A. Flores",estado:"pendiente",motivoNoCierre:"Precio fuera de presupuesto",acciones:[]},
-  {id:"OP-1046",cliente:"Servicios Logísticos EIRL",monto:17800,vendedor:"A. Flores",estado:"cerrada",motivoNoCierre:"",acciones:[]},
-  {id:"OP-1047",cliente:"Textiles Unidos",monto:9950,vendedor:"L. Torres",estado:"en_proceso",motivoNoCierre:"Falta orden de compra firmada",acciones:[
-    {id:1,descripcion:"Solicitar OC firmada por correo",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+const ETAPAS=[
+  "Generación de orden","Validación de datos","Validación de crédito",
+  "Emisión de comprobante","Envío / notificación","Confirmación cliente","Cierre"
 ];
+
+// catálogo de causas de falla por etapa (orientativo)
+const CAUSAS={
+  1:["Datos de cliente incompletos","RUC/DNI inválido","Dirección fiscal errónea"],
+  2:["Crédito rechazado","Línea de crédito excedida","Condiciones comerciales no aprobadas"],
+  3:["Error en cálculo de comprobante","Rechazo de SUNAT/validador","Serie/correlativo duplicado"],
+  4:["Correo del cliente rebotó","Notificación no entregada"],
+  5:["Cliente no confirma recepción","Cliente observa el comprobante"],
+};
 
 const ESTADOS={
   cerrada:{label:"Cerrada",color:"var(--ok)",bg:"var(--okbg)",dot:"var(--okdot)"},
-  en_proceso:{label:"En proceso",color:"var(--warn)",bg:"var(--warnbg)",dot:"var(--warndot)"},
-  pendiente:{label:"Pendiente",color:"var(--alert)",bg:"var(--alertbg)",dot:"var(--alertdot)"},
+  en_curso:{label:"En curso",color:"var(--warn)",bg:"var(--warnbg)",dot:"var(--warndot)"},
+  trabada:{label:"Trabada",color:"var(--alert)",bg:"var(--alertbg)",dot:"var(--alertdot)"},
 };
-const ACCION_ESTADOS={
-  abierta:{label:"Abierta",color:"var(--alert)"},
-  cumplida:{label:"Cumplida",color:"var(--ok)"},
-  reprogramada:{label:"Reprogramada",color:"var(--warn)"},
-};
+const ACCION_ESTADOS={abierta:{label:"Abierta",color:"var(--alert)"},cumplida:{label:"Cumplida",color:"var(--ok)"},reprogramada:{label:"Reprogramada",color:"var(--warn)"}};
 const fmtMoney=n=>"S/ "+n.toLocaleString("es-PE");
 
-let filtro="todas", seleccion=null;
+// timeline helper: genera etapas recorridas
+function tl(pairs){return pairs.map(p=>({fecha:p[0],falla:p[1]||null}));}
 
-const FILTROS=[["todas","Todas"],["cerrada","Cerradas"],["en_proceso","En proceso"],["pendiente","Pendientes"],["no_cerradas","Sin cerrar"]];
+let OPERACIONES=[
+  {id:"OP-1042",cliente:"Distribuidora Andina SAC",monto:12500,vendedor:"M. Quispe",etapaActual:6,estado:"cerrada",
+   timeline:tl([["2026-05-26"],["2026-05-26"],["2026-05-27"],["2026-05-27"],["2026-05-28"],["2026-05-28"],["2026-05-28"]]),
+   fallas:[],acciones:[]},
 
-function render(){
+  {id:"OP-1043",cliente:"Comercial Río Verde",monto:8400,vendedor:"L. Torres",etapaActual:1,estado:"trabada",
+   timeline:tl([["2026-05-27"],["2026-05-28","Datos de cliente incompletos"]]),
+   fallas:[{fecha:"2026-05-28",etapa:1,causa:"Datos de cliente incompletos"}],
+   acciones:[{id:1,descripcion:"Solicitar datos fiscales completos",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+
+  {id:"OP-1044",cliente:"Inversiones del Sur",monto:23100,vendedor:"M. Quispe",etapaActual:2,estado:"trabada",
+   timeline:tl([["2026-05-25"],["2026-05-26"],["2026-05-27","Crédito rechazado"]]),
+   fallas:[{fecha:"2026-05-27",etapa:2,causa:"Crédito rechazado"},{fecha:"2026-05-22",etapa:2,causa:"Línea de crédito excedida"}],
+   acciones:[{id:1,descripcion:"Reevaluación de línea con riesgos",responsable:"Área Riesgos",fechaCompromiso:"2026-05-28",fechaCumplida:"2026-05-28",estado:"cumplida"},
+             {id:2,descripcion:"Reprogramar firma de contrato",responsable:"M. Quispe",fechaCompromiso:"2026-05-30",fechaCumplida:"",estado:"reprogramada"}]},
+
+  {id:"OP-1045",cliente:"Grupo Pacífico Retail",monto:5600,vendedor:"A. Flores",etapaActual:3,estado:"trabada",
+   timeline:tl([["2026-05-26"],["2026-05-26"],["2026-05-27"],["2026-05-28","Rechazo de SUNAT/validador"]]),
+   fallas:[{fecha:"2026-05-28",etapa:3,causa:"Rechazo de SUNAT/validador"}],
+   acciones:[]},
+
+  {id:"OP-1046",cliente:"Servicios Logísticos EIRL",monto:17800,vendedor:"A. Flores",etapaActual:6,estado:"cerrada",
+   timeline:tl([["2026-05-24"],["2026-05-24"],["2026-05-25"],["2026-05-26"],["2026-05-27"],["2026-05-27"],["2026-05-28"]]),
+   fallas:[],acciones:[]},
+
+  {id:"OP-1047",cliente:"Textiles Unidos",monto:9950,vendedor:"L. Torres",etapaActual:1,estado:"trabada",
+   timeline:tl([["2026-05-27"],["2026-05-28","RUC/DNI inválido"]]),
+   fallas:[{fecha:"2026-05-28",etapa:1,causa:"RUC/DNI inválido"},{fecha:"2026-05-19",etapa:1,causa:"Datos de cliente incompletos"}],
+   acciones:[{id:1,descripcion:"Verificar RUC en SUNAT y corregir",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+
+  {id:"OP-1048",cliente:"Comercial Río Verde",monto:6300,vendedor:"L. Torres",etapaActual:5,estado:"en_curso",
+   timeline:tl([["2026-05-26"],["2026-05-26"],["2026-05-27"],["2026-05-27"],["2026-05-28"],["2026-05-28"]]),
+   fallas:[{fecha:"2026-05-24",etapa:5,causa:"Cliente no confirma recepción"}],
+   acciones:[{id:1,descripcion:"Llamar a confirmar recepción de factura",responsable:"L. Torres",fechaCompromiso:"2026-05-29",fechaCumplida:"",estado:"abierta"}]},
+
+  {id:"OP-1049",cliente:"Inversiones del Sur",monto:14200,vendedor:"M. Quispe",etapaActual:3,estado:"trabada",
+   timeline:tl([["2026-05-26"],["2026-05-26"],["2026-05-27"],["2026-05-28","Serie/correlativo duplicado"]]),
+   fallas:[{fecha:"2026-05-28",etapa:3,causa:"Serie/correlativo duplicado"}],
+   acciones:[]},
+];
+
+let filtroEtapa=null, filtroEstado="todas";
+
+/* ---------- VISTA CIERRE DEL DÍA ---------- */
+function renderDiario(){
   document.getElementById("hoy").textContent=HOY;
 
-  const total=OPERACIONES.length;
-  const cerradas=OPERACIONES.filter(o=>o.estado==="cerrada").length;
-  const noCerradas=total-cerradas;
-  const montoCerrado=OPERACIONES.filter(o=>o.estado==="cerrada").reduce((a,o)=>a+o.monto,0);
-  const montoRiesgo=OPERACIONES.filter(o=>o.estado!=="cerrada").reduce((a,o)=>a+o.monto,0);
-  const accAbiertas=OPERACIONES.flatMap(o=>o.acciones).filter(a=>a.estado!=="cumplida").length;
-  const tasa=total?Math.round(cerradas/total*100):0;
+  // Una operación "tuvo actividad hoy" si alguna etapa de su timeline tiene fecha = HOY
+  const conActividadHoy=OPERACIONES.filter(o=>o.timeline.some(p=>p&&p.fecha===HOY));
+  // Cerró venta hoy: está cerrada y su etapa de cierre (última del timeline) es hoy
+  const cerradasHoy=conActividadHoy.filter(o=>o.estado==="cerrada" && o.timeline[6]&&o.timeline[6].fecha===HOY);
+  // No cerró: tuvo movimiento hoy pero sigue trabada o en curso
+  const noCerradas=conActividadHoy.filter(o=>o.estado!=="cerrada");
 
-  document.getElementById("tasa").textContent=tasa+"%";
-  document.getElementById("barfill").style.width=tasa+"%";
+  const baseDia=cerradasHoy.length+noCerradas.length;
+  const tasa=baseDia?Math.round(cerradasHoy.length/baseDia*100):0;
+  const montoCerrado=cerradasHoy.reduce((a,o)=>a+o.monto,0);
+  const montoRiesgo=noCerradas.reduce((a,o)=>a+o.monto,0);
+  const accAbiertas=noCerradas.flatMap(o=>o.acciones).filter(a=>a.estado!=="cumplida").length;
 
-  document.getElementById("kpis").innerHTML=[
-    ["Operaciones del día",total,"registradas","neutral"],
-    ["Cerraron venta",cerradas,fmtMoney(montoCerrado),"ok"],
-    ["Sin cerrar",noCerradas,fmtMoney(montoRiesgo)+" en riesgo","alert"],
-    ["Acciones abiertas",accAbiertas,"por ejecutar","warn"],
-  ].map(([l,v,s,t])=>`<div class="kpi"><div class="kpi-label">${l}</div>
-    <div class="kpi-value t-${t}">${v}</div><div class="kpi-sub">${s}</div></div>`).join("");
+  document.getElementById("tasa-banner").innerHTML=`
+    <div class="tasa-big">${tasa}%</div>
+    <div class="tasa-info">
+      <div class="lbl">Tasa de cierre del día</div>
+      <div class="txt">${cerradasHoy.length} de ${baseDia} operaciones con actividad hoy cerraron la venta. ${noCerradas.length?`<b>${noCerradas.length}</b> quedaron pendientes de seguimiento.`:'Sin pendientes 🎉'}</div>
+      <div class="tasa-bar"><div class="tasa-bar-fill" style="width:${tasa}%"></div></div>
+    </div>`;
 
-  document.getElementById("filtros").innerHTML=FILTROS.map(([k,l])=>
-    `<button class="filtro ${filtro===k?"activo":""}" onclick="setFiltro('${k}')">${l}</button>`).join("");
+  document.getElementById("dia-kpis").innerHTML=[
+    ["Cerraron venta hoy",cerradasHoy.length,fmtMoney(montoCerrado),"ok"],
+    ["Sin cerrar hoy",noCerradas.length,fmtMoney(montoRiesgo)+" en riesgo","alert"],
+    ["Acciones por ejecutar",accAbiertas,"sobre lo pendiente","warn"],
+    ["Movimiento del día",baseDia,"operaciones activas","neutral"],
+  ].map(([l,v,s,t])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value t-${t}">${v}</div><div class="kpi-sub">${s}</div></div>`).join("");
+
+  document.getElementById("dia-cerradas").innerHTML= cerradasHoy.length? cerradasHoy.map(o=>`
+    <div class="op-mini" onclick="abrir('${o.id}')">
+      <div class="op-mini-top"><span class="op-mini-cli">${o.cliente}</span><span class="op-mini-monto">${fmtMoney(o.monto)}</span></div>
+      <div class="op-mini-sub"><span>${o.id} · ${o.vendedor}</span><span style="color:var(--ok)">✓ Venta cerrada</span></div>
+    </div>`).join("") : '<div class="vacio-col">Ninguna operación cerró venta hoy todavía.</div>';
+
+  document.getElementById("dia-pendientes").innerHTML= noCerradas.length? noCerradas.map(o=>{
+    const ab=o.acciones.filter(a=>a.estado!=="cumplida").length;
+    return `<div class="op-mini" onclick="abrir('${o.id}')">
+      <div class="op-mini-top"><span class="op-mini-cli">${o.cliente}</span><span class="op-mini-monto">${fmtMoney(o.monto)}</span></div>
+      <div class="op-mini-sub">
+        <span class="op-mini-etapa">⚠ Trabada en E${o.etapaActual+1}: ${ETAPAS[o.etapaActual]}</span>
+        <span class="op-mini-acc">${ab?ab+' acción'+(ab>1?'es':'')+' pendiente'+(ab>1?'s':''):'sin acciones'}</span>
+      </div>
+    </div>`;
+  }).join("") : '<div class="vacio-col">No hay operaciones pendientes con actividad hoy.</div>';
+}
+
+/* ---------- VISTA FLUJO ---------- */
+function renderFlujo(){
+  document.getElementById("hoy").textContent=HOY;
+
+  // embudo: cuántas ops por etapa actual + fallas activas
+  const porEtapa=ETAPAS.map((_,i)=>OPERACIONES.filter(o=>o.etapaActual===i));
+  document.getElementById("embudo").innerHTML=ETAPAS.map((nom,i)=>{
+    const ops=porEtapa[i];
+    const trabadas=ops.filter(o=>o.estado==="trabada").length;
+    const sel=filtroEtapa===i?"sel":"";
+    return `<div class="etapa-col ${sel}" onclick="toggleEtapa(${i})">
+      <div class="etapa-n">ETAPA ${i+1}</div>
+      <div class="etapa-nom">${nom}</div>
+      <div class="etapa-count">${ops.length}</div>
+      <div class="etapa-fallas ${trabadas?'has':'no'}">${trabadas?'⚠ '+trabadas+' trabada'+(trabadas>1?'s':''):'sin trabas'}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("filtros").innerHTML=
+    [["todas","Todas"],["cerrada","Cerradas"],["en_curso","En curso"],["trabada","Trabadas"]]
+    .map(([k,l])=>`<button class="filtro ${filtroEstado===k?'activo':''}" onclick="setEstadoFiltro('${k}')">${l}</button>`).join("")
+    + (filtroEtapa!==null?`<button class="filtro activo" onclick="toggleEtapa(${filtroEtapa})">Etapa: ${ETAPAS[filtroEtapa]} ✕</button>`:"");
 
   let vis=OPERACIONES;
-  if(filtro==="no_cerradas")vis=OPERACIONES.filter(o=>o.estado!=="cerrada");
-  else if(filtro!=="todas")vis=OPERACIONES.filter(o=>o.estado===filtro);
+  if(filtroEstado!=="todas")vis=vis.filter(o=>o.estado===filtroEstado);
+  if(filtroEtapa!==null)vis=vis.filter(o=>o.etapaActual===filtroEtapa);
 
   document.getElementById("filas").innerHTML=vis.map(o=>{
     const e=ESTADOS[o.estado];
-    const ab=o.acciones.filter(a=>a.estado!=="cumplida").length;
+    const nf=o.fallas.length;
     return `<div class="grid-row fila" onclick="abrir('${o.id}')">
       <span class="op-id">${o.id}</span>
       <span class="cliente">${o.cliente}</span>
       <span class="monto">${fmtMoney(o.monto)}</span>
-      <span class="vendedor">${o.vendedor}</span>
-      <span><span class="badge" style="color:${e.color};background:${e.bg}">
-        <i class="dot" style="background:${e.dot}"></i>${e.label}</span></span>
-      <span class="seg-cell">${ab>0?`<b style="color:var(--alert)">${ab}</b>`:'<span style="color:#9aa">—</span>'}</span>
+      <span style="font-size:13px">${o.etapaActual+1}. ${ETAPAS[o.etapaActual]}</span>
+      <span><span class="badge" style="color:${e.color};background:${e.bg}"><i class="dot" style="background:${e.dot}"></i>${e.label}</span></span>
+      <span class="falla-pin">${nf?`<span class="pin">${nf}</span>`:'<span style="color:#b8b2a4">—</span>'}</span>
     </div>`;
-  }).join("");
+  }).join("") || `<div style="padding:24px;text-align:center;color:var(--muted)">Sin operaciones en este filtro.</div>`;
 }
 
-function setFiltro(k){filtro=k;render();}
+function toggleEtapa(i){filtroEtapa=filtroEtapa===i?null:i;renderFlujo();}
+function setEstadoFiltro(k){filtroEstado=k;renderFlujo();}
 
+/* ---------- FICHA DETALLE ---------- */
 function abrir(id){
-  seleccion=id;
   const o=OPERACIONES.find(x=>x.id===id);
-  const panel=document.getElementById("panel");
-  panel.innerHTML=`
+  const e=ESTADOS[o.estado];
+  const p=document.getElementById("panel");
+
+  // timeline render
+  const tlHtml=ETAPAS.map((nom,i)=>{
+    const paso=o.timeline[i];
+    let cls,icon;
+    if(!paso){cls="tl-pending";icon="";}
+    else if(paso.falla){cls="tl-fail";icon="!";}
+    else if(i===o.etapaActual && o.estado!=="cerrada"){cls="tl-current";icon="●";}
+    else{cls="tl-done";icon="✓";}
+    return `<div class="tl-step">
+      <div class="tl-dot ${cls}">${icon}</div>
+      <div class="tl-body">
+        <div class="tl-nom">${i+1}. ${nom}</div>
+        <div class="tl-fecha">${paso?(paso.fecha):'pendiente'}</div>
+        ${paso&&paso.falla?`<div class="tl-falla">⚠ ${paso.falla}</div>`:''}
+      </div></div>`;
+  }).join("");
+
+  const fallasHtml=o.fallas.length? o.fallas.slice().sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(f=>`
+    <div class="falla-card">
+      <div class="falla-head"><span>${f.fecha}</span></div>
+      <div class="falla-causa">${f.causa}</div>
+      <div class="falla-etapa">Etapa ${f.etapa+1}: ${ETAPAS[f.etapa]}</div>
+    </div>`).join("") : '<div style="color:var(--muted);font-style:italic;font-size:14px">Sin fallas registradas.</div>';
+
+  const accHtml=o.acciones.length? o.acciones.map(a=>{const ae=ACCION_ESTADOS[a.estado];return `
+    <div class="accion-card">
+      <div class="accion-top"><span class="acc-badge" style="color:${ae.color}">${ae.label}</span><span class="acc-resp">${a.responsable}</span></div>
+      <div class="acc-desc">${a.descripcion}</div>
+      <div class="acc-fechas"><span>📅 Compromiso: <b>${a.fechaCompromiso||'—'}</b></span><span>✅ Cumplida: <b>${a.fechaCumplida||'—'}</b></span></div>
+      <div class="acc-btns">
+        ${a.estado!=="cumplida"?`<button class="mini-btn" onclick="cumplir('${o.id}',${a.id})">Marcar cumplida</button>`:''}
+        <button class="mini-btn alt" onclick="reprogramar('${o.id}',${a.id})">Reprogramar</button>
+      </div></div>`;}).join("") : '<div style="color:var(--muted);font-style:italic;font-size:14px">Sin acciones registradas.</div>';
+
+  p.innerHTML=`
     <button class="cerrar" onclick="cerrar()">✕</button>
     <div class="kicker">${o.id}</div>
     <h2>${o.cliente}</h2>
     <div class="panel-meta">${fmtMoney(o.monto)} · ${o.vendedor}</div>
+    <span class="badge" style="color:${e.color};background:${e.bg}"><i class="dot" style="background:${e.dot}"></i>${e.label} · Etapa ${o.etapaActual+1}/7</span>
 
-    <label class="field-label">Estado de la operación</label>
-    <div class="estado-btns">
-      ${Object.entries(ESTADOS).map(([k,v])=>`<button class="estado-btn"
-        style="${o.estado===k?`background:${v.bg};color:${v.color};border-color:${v.dot}`:''}"
-        onclick="setEstado('${o.id}','${k}')">${v.label}</button>`).join("")}
-    </div>
+    <div class="ficha-secc">Línea de tiempo del flujo</div>
+    ${tlHtml}
 
-    ${o.estado!=="cerrada"?`
-      <label class="field-label">Motivo de no cierre</label>
-      <textarea oninput="setMotivo('${o.id}',this.value)"
-        placeholder="Ej. cliente no respondió, falta documentación…">${o.motivoNoCierre}</textarea>`:""}
+    <div class="ficha-secc">Historial de fallas ${o.fallas.length>1?`<span class="reinc-tag">reincide ×${o.fallas.length}</span>`:''}</div>
+    ${fallasHtml}
 
-    <div class="divider"></div>
-    <h3 class="acciones-title">Acciones de seguimiento</h3>
-    ${o.acciones.length===0?'<div class="vacio">Sin acciones registradas.</div>':""}
-    ${o.acciones.map(a=>{const ae=ACCION_ESTADOS[a.estado];return `
-      <div class="accion-card">
-        <div class="accion-top">
-          <span class="acc-badge" style="color:${ae.color}">${ae.label}</span>
-          <span class="acc-resp">${a.responsable}</span>
-        </div>
-        <div class="acc-desc">${a.descripcion}</div>
-        <div class="acc-fechas">
-          <span>📅 Compromiso: <b>${a.fechaCompromiso||"—"}</b></span>
-          <span>✅ Cumplida: <b>${a.fechaCumplida||"—"}</b></span>
-        </div>
-        <div class="acc-btns">
-          ${a.estado!=="cumplida"?`<button class="mini-btn" onclick="cumplir('${o.id}',${a.id})">Marcar cumplida</button>`:""}
-          <button class="mini-btn alt" onclick="reprogramar('${o.id}',${a.id})">Reprogramar</button>
-        </div>
-      </div>`;}).join("")}
-
-    <div class="nueva-accion">
-      <label class="field-label">Nueva acción</label>
-      <input id="na-desc" placeholder="Descripción de la acción" oninput="chkAdd()">
-      <input id="na-resp" placeholder="Responsable" oninput="chkAdd()">
-      <input id="na-fecha" type="date">
-      <button class="add-btn" id="na-btn" disabled onclick="addAccion('${o.id}')">+ Registrar acción</button>
-    </div>`;
+    <div class="ficha-secc">Acciones de seguimiento</div>
+    ${accHtml}
+  `;
   document.getElementById("overlay").classList.add("open");
 }
-function cerrar(){seleccion=null;document.getElementById("overlay").classList.remove("open");}
+function cerrar(){document.getElementById("overlay").classList.remove("open");}
 document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")cerrar();});
+function cumplir(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);a.estado="cumplida";a.fechaCumplida=HOY;abrir(id);renderFlujo();renderDiario();}
+function reprogramar(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);const nf=prompt("Nueva fecha (YYYY-MM-DD):",a.fechaCompromiso);if(nf){a.fechaCompromiso=nf;a.estado="reprogramada";a.fechaCumplida="";abrir(id);renderFlujo();renderDiario();}}
 
-function setEstado(id,k){OPERACIONES.find(o=>o.id===id).estado=k;render();abrir(id);}
-function setMotivo(id,v){OPERACIONES.find(o=>o.id===id).motivoNoCierre=v;}
-function cumplir(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);
-  a.estado="cumplida";a.fechaCumplida=HOY;render();abrir(id);}
-function reprogramar(id,accId){const a=OPERACIONES.find(o=>o.id===id).acciones.find(x=>x.id===accId);
-  const nf=prompt("Nueva fecha compromiso (YYYY-MM-DD):",a.fechaCompromiso);
-  if(nf){a.fechaCompromiso=nf;a.estado="reprogramada";a.fechaCumplida="";render();abrir(id);}}
-function chkAdd(){const d=document.getElementById("na-desc").value,r=document.getElementById("na-resp").value;
-  document.getElementById("na-btn").disabled=!(d&&r);}
-function addAccion(id){const o=OPERACIONES.find(x=>x.id===id);
-  const desc=document.getElementById("na-desc").value,resp=document.getElementById("na-resp").value,
-    fecha=document.getElementById("na-fecha").value;
-  o.acciones.push({id:(o.acciones.at(-1)?.id||0)+1,descripcion:desc,responsable:resp,
-    fechaCompromiso:fecha,fechaCumplida:"",estado:"abierta"});
-  render();abrir(id);}
+/* ---------- VISTA ANÁLISIS ---------- */
+function renderAnalisis(){
+  const todasFallas=OPERACIONES.flatMap(o=>o.fallas.map(f=>({...f,opId:o.id,cliente:o.cliente})));
+  const totalFallas=todasFallas.length;
 
-render();
+  // por etapa
+  const porEtapa={};
+  todasFallas.forEach(f=>porEtapa[f.etapa]=(porEtapa[f.etapa]||0)+1);
+  // por causa
+  const porCausa={};
+  todasFallas.forEach(f=>porCausa[f.causa]=(porCausa[f.causa]||0)+1);
+  // por cliente
+  const porCliente={};
+  todasFallas.forEach(f=>porCliente[f.cliente]=(porCliente[f.cliente]||0)+1);
+
+  const etapaTop=Object.entries(porEtapa).sort((a,b)=>b[1]-a[1])[0];
+  const causaTop=Object.entries(porCausa).sort((a,b)=>b[1]-a[1])[0];
+  const clienteReinc=Object.entries(porCliente).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]);
+
+  // KPIs
+  document.getElementById("ana-kpis").innerHTML=[
+    ["Fallas registradas",totalFallas,"en el historial","alert"],
+    ["Etapa más crítica",etapaTop?`E${+etapaTop[0]+1}`:"—",etapaTop?ETAPAS[etapaTop[0]]:"sin datos","warn"],
+    ["Operaciones trabadas",OPERACIONES.filter(o=>o.estado==="trabada").length,"requieren acción","alert"],
+    ["Clientes reincidentes",clienteReinc.length,"con +1 falla","info"],
+  ].map(([l,v,s,t])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value t-${t}">${v}</div><div class="kpi-sub">${s}</div></div>`).join("");
+
+  // insight automático
+  document.getElementById("insight").innerHTML= totalFallas? 
+    `El proceso concentra sus fallas en la etapa <b>${ETAPAS[etapaTop[0]]}</b> (${etapaTop[1]} de ${totalFallas} fallas). La causa más repetida es <b>"${causaTop[0]}"</b>${clienteReinc.length?`, y <b>${clienteReinc[0][0]}</b> es el cliente con más reincidencia (${clienteReinc[0][1]} fallas)`:''}. Conviene priorizar un control preventivo en esa etapa.`
+    : "No hay fallas registradas en el periodo.";
+
+  const barra=(obj,total,color,labelFn)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{
+    const pct=Math.round(n/total*100);
+    return `<div class="barra-row"><div class="barra-top"><span>${labelFn(k)}${n>1?'<span class="reinc-tag">×'+n+'</span>':''}</span><b>${n} (${pct}%)</b></div>
+      <div class="barra-track"><div class="barra-fill" style="width:${pct}%;background:${color}"></div></div></div>`;
+  }).join("");
+
+  document.getElementById("reinc-etapa").innerHTML= totalFallas? barra(porEtapa,totalFallas,"var(--warndot)",k=>`E${+k+1}. ${ETAPAS[k]}`):'<div style="color:var(--muted)">Sin datos.</div>';
+  document.getElementById("reinc-causa").innerHTML= totalFallas? barra(porCausa,totalFallas,"var(--alertdot)",k=>k):'<div style="color:var(--muted)">Sin datos.</div>';
+  document.getElementById("reinc-cliente").innerHTML= totalFallas? barra(porCliente,totalFallas,"var(--info)",k=>k):'<div style="color:var(--muted)">Sin datos.</div>';
+}
+
+/* ---------- navegación ---------- */
+function setView(v,btn){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("activo"));
+  btn.classList.add("activo");
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("activo"));
+  document.getElementById("view-"+v).classList.add("activo");
+  if(v==="diario")renderDiario();
+  if(v==="flujo")renderFlujo();
+  if(v==="analisis")renderAnalisis();
+}
+
+renderDiario();
+renderFlujo();
 </script>
 </body>
 </html>
